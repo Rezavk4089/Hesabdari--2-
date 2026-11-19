@@ -29,7 +29,7 @@ jobs:
             exit 1
           fi
 
-          echo "Found: $ZIP_FILE"
+          echo "Found ZIP: $ZIP_FILE"
           echo "zip_file=$ZIP_FILE" >> "$GITHUB_OUTPUT"
 
       - name: Set up Java 17
@@ -39,11 +39,9 @@ jobs:
           java-version: '17'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK packages
-        run: |
-          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -51,21 +49,27 @@ jobs:
           gradle-version: '8.5'
 
       - name: Extract project ZIP
+        shell: bash
         run: |
           mkdir -p extracted
           unzip -q "${{ steps.zip.outputs.zip_file }}" -d extracted
 
-          if [ ! -f extracted/settings.gradle ]; then
+          echo "Checking Android project files..."
+
+          if [ ! -f extracted/settings.gradle ] && [ ! -f extracted/settings.gradle.kts ]; then
             echo "ERROR: settings.gradle not found"
+            find extracted -maxdepth 3 -type f | head -n 80
             exit 1
           fi
 
-          if [ ! -f extracted/app/build.gradle ]; then
+          if [ ! -f extracted/app/build.gradle ] && [ ! -f extracted/app/build.gradle.kts ]; then
             echo "ERROR: app/build.gradle not found"
+            find extracted -maxdepth 3 -type f | head -n 80
             exit 1
           fi
 
       - name: Build Android APK
+        shell: bash
         run: |
           cd extracted
           gradle assembleDebug --no-daemon
